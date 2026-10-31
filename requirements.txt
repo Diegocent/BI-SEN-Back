@@ -6,3 +6,8 @@ django-cors-headers
 django-filter
 openpyxl
 python-dotenv
+
+# Requerido por etl/data_cleaner.py para la estandarización difusa de nombres
+# geográficos. Solo lo usa cargar_historico_a_ingesta.py, la importación única
+# de la planilla histórica; el ETL recurrente no lo necesita.
+Levenshtein

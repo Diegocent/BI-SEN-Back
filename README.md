@@ -17,8 +17,10 @@ Este proyecto es el backend de la plataforma de análisis de datos de ayudas, de
   - **urls.py**: Rutas principales del proyecto.
   - **asgi.py / wsgi.py**: Interfaces para servidores ASGI/WSGI.
 - **etl/**: Scripts de ETL (Extracción, Transformación y Carga de datos).
-  - **etl_script.py**: Script principal de ETL.
-  - **data_cleaner.py**: Utilidades para limpieza de datos.
+  - **etl_script.py**: ETL recurrente. Lee la tabla `ingesta_asistencia_humanitaria` y carga las dimensiones y la tabla de hechos.
+  - **cargar_historico_a_ingesta.py**: Migración única de la planilla histórica hacia la tabla de ingesta.
+  - **data_cleaner.py**: Estandarización de los datos de la planilla. Solo lo usa la migración histórica.
+  - **sql/**: Cambios de esquema del Data Warehouse, aplicables con `psql`.
 - **manage.py**: Script de gestión de Django (migraciones, servidor, etc.).
 - **requirements.txt**: Lista de dependencias del proyecto.
 - **Dockerfile**: Contenerización del backend.
@@ -102,7 +104,8 @@ Cada endpoint está diseñado para proveer exactamente los datos requeridos por 
 - `python manage.py makemigrations`: Crea nuevas migraciones de base de datos.
 - `python manage.py migrate`: Aplica migraciones.
 - `python manage.py createsuperuser`: Crea un usuario administrador.
-- `python etl/etl_script.py`: Ejecuta el proceso ETL.
+- `python etl/etl_script.py`: Compacta la ingesta en el Data Warehouse.
+- `python etl/etl_script.py --instalar-refresco`: Instala el trigger que actualiza el BI al guardar una familia.
 - `docker-compose up`: Levanta todos los servicios definidos en docker-compose.
 
 ## Configuración y Archivos Clave

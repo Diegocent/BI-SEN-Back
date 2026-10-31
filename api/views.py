@@ -33,6 +33,15 @@ def _annotate_total_ayudas(queryset):
         terciadas_cantidad=Sum('terciadas_cantidad'),
         puntales_cantidad=Sum('puntales_cantidad'),
         carpas_plasticas_cantidad=Sum('carpas_plasticas_cantidad'),
+        cantidad_registros=Sum('cantidad_registros'),
+        cantidad_familias_asistidas=Sum('cantidad_familias_asistidas'),
+        cantidad_mujeres=Sum('cantidad_mujeres'),
+        cantidad_hombres=Sum('cantidad_hombres'),
+        cantidad_otro=Sum('cantidad_otro'),
+        cantidad_rural=Sum('cantidad_rural'),
+        cantidad_urbana=Sum('cantidad_urbana'),
+        cantidad_indigena=Sum('cantidad_indigena'),
+        cantidad_no_indigena=Sum('cantidad_no_indigena'),
         total_ayudas=F('kit_sentencia') + F('kit_evento') +
             F('chapa_fibrocemento_cantidad') + F('chapa_zinc_cantidad') +
             F('colchones_cantidad') + F('frazadas_cantidad') +
@@ -53,6 +62,32 @@ class HechosAsistenciaHumanitariaFilterSet(django_filters.FilterSet):
     fecha_hasta = django_filters.DateFilter(field_name='id_fecha__fecha', lookup_expr='lte')
     chapas = django_filters.NumberFilter(method='filter_chapas')
     numeroOcurrencias = django_filters.NumberFilter(method='filter_numero_ocurrencias')
+    familias_min = django_filters.NumberFilter(
+        field_name='cantidad_familias_asistidas', lookup_expr='gte',
+    )
+    familias_max = django_filters.NumberFilter(
+        field_name='cantidad_familias_asistidas', lookup_expr='lte',
+    )
+    mujeres_min = django_filters.NumberFilter(
+        field_name='cantidad_mujeres', lookup_expr='gte',
+    )
+    hombres_min = django_filters.NumberFilter(
+        field_name='cantidad_hombres', lookup_expr='gte',
+    )
+    indigena_min = django_filters.NumberFilter(
+        field_name='cantidad_indigena', lookup_expr='gte',
+    )
+    no_indigena_min = django_filters.NumberFilter(
+        field_name='cantidad_no_indigena', lookup_expr='gte',
+    )
+    caracterizacion_informada = django_filters.BooleanFilter(
+        method='filter_caracterizacion_informada',
+    )
+
+    def filter_caracterizacion_informada(self, queryset, name, value):
+        if value:
+            return queryset.filter(cantidad_familias_asistidas__gt=0)
+        return queryset.filter(cantidad_familias_asistidas=0)
 
     def filter_chapas(self, queryset, name, value):
         # Si el queryset ya tiene 'chapas' anotado, filtra directo
@@ -267,11 +302,14 @@ class EventosPorLocalidadAPIView(generics.ListAPIView):
         )
         # El filtrado por fecha lo hace el FilterSet
         # Excluir localidad 'SIN ESPECIFICAR', anotar y ordenar
-        queryset = queryset.exclude(id_ubicacion__localidad="SIN ESPECIFICAR")
+        queryset = queryset.exclude(
+            id_ubicacion__localidad__in=["SIN ESPECIFICAR", ""]
+        )
+        queryset = _annotate_total_ayudas(queryset)
         queryset = queryset.annotate(
             numero_eventos=Count('id_evento')
-        ).order_by('-numero_eventos')
-        return _annotate_total_ayudas(queryset)
+        ).order_by('-cantidad_familias_asistidas')
+        return queryset
 
 class AsistenciasPorAnioDepartamentoAPIView(generics.ListAPIView):
     """
@@ -312,9 +350,8 @@ class TendenciaMensualAsistenciasAPIView(generics.ListAPIView):
             queryset = queryset.filter(id_evento__evento=evento_param)
         
         
-        # Incluir todos los campos necesarios para el serializer
         return queryset.annotate(
-            numero_asistencias=Count('id_asistencia_hum'),
+            numero_asistencias=Sum('cantidad_familias_asistidas'),
             kit_sentencia=Sum('kit_sentencia'),
             kit_evento=Sum('kit_evento'),
             chapa_fibrocemento_cantidad=Sum('chapa_fibrocemento_cantidad'),
@@ -433,7 +470,8 @@ class OcurrenciasEventoAnualAPIView(generics.ListAPIView):
         )
         # El filtrado por fecha lo hace el FilterSet
         return queryset.annotate(
-            numeroOcurrencias=Count('id_asistencia_hum')
+            numeroOcurrencias=Count('id_asistencia_hum'),
+            cantidad_familias_asistidas=Sum('cantidad_familias_asistidas'),
         ).order_by('anio', 'evento')
 
 class IncendiosAnualesPorDepartamentoAPIView(generics.ListAPIView):
@@ -475,17 +513,41 @@ class ResumenGeneralAPIView(APIView):
                 return Response({
                     'cantidad_registros_total': 0,
                     'cantidad_kit_evento': 0,
-                    'cantidad_departamentos': 0
+                    'cantidad_departamentos': 0,
+                    'cantidad_familias_asistidas': 0,
+                    'cantidad_mujeres': 0,
+                    'cantidad_hombres': 0,
+                    'cantidad_otro': 0,
+                    'cantidad_rural': 0,
+                    'cantidad_urbana': 0,
+                    'cantidad_indigena': 0,
+                    'cantidad_no_indigena': 0,
                 })
         resumen = queryset.aggregate(
-            cantidad_registros_total=Count('id_asistencia_hum'),
+            cantidad_registros_total=Sum('cantidad_registros'),
             cantidad_kit_evento=Sum('kit_evento'),
-            cantidad_departamentos=Count('id_ubicacion__departamento', distinct=True)
+            cantidad_departamentos=Count('id_ubicacion__departamento', distinct=True),
+            cantidad_familias_asistidas=Sum('cantidad_familias_asistidas'),
+            cantidad_mujeres=Sum('cantidad_mujeres'),
+            cantidad_hombres=Sum('cantidad_hombres'),
+            cantidad_otro=Sum('cantidad_otro'),
+            cantidad_rural=Sum('cantidad_rural'),
+            cantidad_urbana=Sum('cantidad_urbana'),
+            cantidad_indigena=Sum('cantidad_indigena'),
+            cantidad_no_indigena=Sum('cantidad_no_indigena'),
         )
         data = {
             'cantidad_registros_total': resumen['cantidad_registros_total'] or 0,
             'cantidad_kit_evento': resumen['cantidad_kit_evento'] or 0,
-            'cantidad_departamentos': resumen['cantidad_departamentos'] or 0
+            'cantidad_departamentos': resumen['cantidad_departamentos'] or 0,
+            'cantidad_familias_asistidas': resumen['cantidad_familias_asistidas'] or 0,
+            'cantidad_mujeres': resumen['cantidad_mujeres'] or 0,
+            'cantidad_hombres': resumen['cantidad_hombres'] or 0,
+            'cantidad_otro': resumen['cantidad_otro'] or 0,
+            'cantidad_rural': resumen['cantidad_rural'] or 0,
+            'cantidad_urbana': resumen['cantidad_urbana'] or 0,
+            'cantidad_indigena': resumen['cantidad_indigena'] or 0,
+            'cantidad_no_indigena': resumen['cantidad_no_indigena'] or 0,
         }
         serializer = ResumenGeneralSerializer(data)
         return Response(serializer.data)
@@ -514,12 +576,8 @@ class ResumenPorDepartamentoAPIView(generics.ListAPIView):
         # Agregación por departamento
         queryset = base_queryset.values(
             departamento=F('id_ubicacion__departamento')
-        ).annotate(
-            cantidad_registros=Count('id_asistencia_hum')
-        ).order_by('-cantidad_registros')
-
-        # Aplica la anotación de totales ANTES de convertir a lista
-        queryset = _annotate_total_ayudas(queryset)
+        )
+        queryset = _annotate_total_ayudas(queryset).order_by('-cantidad_registros')
 
         # Evento más frecuente por departamento
         eventos = base_queryset.values(

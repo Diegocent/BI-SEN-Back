@@ -46,6 +46,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'corsheaders',  # <--- Agregado para CORS
+    'rest_framework',
+    'django_filters',
     'api', # Asegúrate de que tu aplicación 'api' esté aquí
 ]
 
@@ -77,6 +79,22 @@ CSRF_TRUSTED_ORIGINS = [
 
 # Permitir también credenciales (cookies, auth, etc.)
 CORS_ALLOW_CREDENTIALS = True
+
+if DEBUG:
+    CORS_ALLOWED_ORIGINS += [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:4173",
+        "http://127.0.0.1:4173",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ]
+    CSRF_TRUSTED_ORIGINS += [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:4173",
+        "http://127.0.0.1:4173",
+    ]
 
 # Si querés permitir headers personalizados:
 CORS_ALLOW_HEADERS = [
